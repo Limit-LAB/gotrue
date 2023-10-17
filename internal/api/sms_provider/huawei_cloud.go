@@ -52,7 +52,16 @@ func CanonicalRequest(request *http.Request, signedHeaders []string) (string, er
 			return "", err
 		}
 	}
-	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", request.Method, request.URL.Path, request.URL.RawQuery, CanonicalHeaders(request, signedHeaders), strings.Join(signedHeaders, ";"), hexencode), err
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s", request.Method, CanonicalURI(request), request.URL.RawQuery, CanonicalHeaders(request, signedHeaders), strings.Join(signedHeaders, ";"), hexencode), err
+}
+
+// CanonicalURI returns request uri
+func CanonicalURI(request *http.Request) string {
+	uri := request.URL.Path
+	if !strings.HasSuffix(uri, "/") {
+		uri += "/"
+	}
+	return uri
 }
 
 // CanonicalHeaders
@@ -172,8 +181,18 @@ type HuaweiCloudProvider struct {
 
 // SendMessage implements SmsProvider.
 func (p *HuaweiCloudProvider) SendMessage(phone string, message string, channel string, otp string) (string, error) {
-	params := buildRequestParams(p.Config.ChannelNumber, phone, message, otp, p.Config.ChannelName)
-	req, err := http.NewRequest("POST", p.Config.ApiPath, bytes.NewBuffer([]byte(params)))
+	switch channel {
+	case SMSProvider:
+		return p.SendSms(phone, message, otp)
+	default:
+		return "", fmt.Errorf("channel type %q is not supported for Messagebird", channel)
+	}
+}
+
+func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, error) {
+	params := buildRequestParams(p.Config.ChannelNumber, phone, templateId, otp, p.Config.ChannelName)
+	url := p.Config.ApiPath + "/sms/batchSendSms/v1"
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(params)))
 	if err != nil {
 		return "", err
 	}
@@ -184,6 +203,9 @@ func (p *HuaweiCloudProvider) SendMessage(phone string, message string, channel 
 		Secret: p.Config.ApiSecret,
 	}
 	s.Sign(req)
+	for key, vals := range req.Header {
+		fmt.Printf("header %s: %s\n", key, vals)
+	}
 
 	client := &http.Client{Timeout: defaultTimeout}
 	resp, err := client.Do(req)
