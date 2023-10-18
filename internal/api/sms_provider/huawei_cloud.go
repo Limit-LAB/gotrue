@@ -1,18 +1,15 @@
 package sms_provider
 
 import (
-	"encoding/json"
-	"errors"
-	"net/http"
-	"net/url"
-
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
-
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-
+	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -198,12 +195,14 @@ type HuaweiCloudProvider struct {
 }
 
 // SendMessage implements SmsProvider.
+// note that the `message` is the template ID which has been registered on Huawei Cloud
+// see https://support.huaweicloud.com/intl/en-us/msgsms_faq/sms_faq_sec03.html
 func (p *HuaweiCloudProvider) SendMessage(phone string, message string, channel string, otp string) (string, error) {
 	switch channel {
 	case SMSProvider:
 		return p.SendSms(phone, message, otp)
 	default:
-		return "", fmt.Errorf("channel type %q is not supported for Messagebird", channel)
+		return "", fmt.Errorf("channel type %q is not supported for Huawei Cloud Message & SMS service", channel)
 	}
 }
 
@@ -238,8 +237,8 @@ func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, er
 		return "", derr
 	}
 
-	if len(r.Result) == 0 {
-		return "", errors.New("result is empty")
+	if r.Code != "000000" || len(r.Result) == 0 {
+		return "", errors.New(fmt.Sprintf("error code: %s, %s", r.Code, r.Description))
 	}
 
 	return r.Result[0].SmsMsgId, nil
