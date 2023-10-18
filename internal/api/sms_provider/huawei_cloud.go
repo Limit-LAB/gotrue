@@ -220,7 +220,10 @@ func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, er
 		Key:    p.Config.ApiKey,
 		Secret: p.Config.ApiSecret,
 	}
-	s.Sign(req)
+	serr := s.Sign(req)
+	if serr != nil {
+		return "", serr
+	}
 
 	client := &http.Client{Timeout: defaultTimeout}
 	resp, err := client.Do(req)
@@ -232,7 +235,7 @@ func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, er
 	r := &HuaweiCloudResponse{}
 	derr := json.NewDecoder(resp.Body).Decode(r)
 	if derr != nil {
-		return "", err
+		return "", derr
 	}
 
 	if len(r.Result) == 0 {
