@@ -1,6 +1,8 @@
 package sms_provider
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 
@@ -175,6 +177,22 @@ func (s *Signer) Sign(request *http.Request) error {
 	return nil
 }
 
+type HuaweiCloudResponse struct {
+	Code        string       `json:"code"`
+	Description string       `json:"description"`
+	Result      []ResultItem `json:"result"`
+}
+
+type ResultItem struct {
+	Total      int    `json:"total"`
+	OriginTo   string `json:"originTo"`
+	CreateTime string `json:"createTime"`
+	From       string `json:"from"`
+	SmsMsgId   string `json:"smsMsgId"`
+	CountryId  string `json:"countryId"`
+	Status     string `json:"status"`
+}
+
 type HuaweiCloudProvider struct {
 	Config *conf.HuaweiCloudProviderConfiguration
 }
@@ -203,9 +221,6 @@ func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, er
 		Secret: p.Config.ApiSecret,
 	}
 	s.Sign(req)
-	for key, vals := range req.Header {
-		fmt.Printf("header %s: %s\n", key, vals)
-	}
 
 	client := &http.Client{Timeout: defaultTimeout}
 	resp, err := client.Do(req)
@@ -214,12 +229,17 @@ func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, er
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	r := &HuaweiCloudResponse{}
+	derr := json.NewDecoder(resp.Body).Decode(r)
+	if derr != nil {
 		return "", err
 	}
 
-	return string(body), nil
+	if len(r.Result) == 0 {
+		return "", errors.New("result is empty")
+	}
+
+	return r.Result[0].SmsMsgId, nil
 }
 
 func buildRequestParams(sender, receiver, templateId, otp, signature string) string {
