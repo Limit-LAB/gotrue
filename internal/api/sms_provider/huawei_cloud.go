@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -238,7 +237,7 @@ func (p *HuaweiCloudProvider) SendSms(phone, templateId, otp string) (string, er
 	}
 
 	if r.Code != "000000" || len(r.Result) == 0 {
-		return "", errors.New(fmt.Sprintf("error code: %s, %s", r.Code, r.Description))
+		return "", fmt.Errorf("error code: %s, %s", r.Code, r.Description)
 	}
 
 	return r.Result[0].SmsMsgId, nil
