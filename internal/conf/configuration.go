@@ -256,7 +256,7 @@ type SmsProviderConfiguration struct {
 	Messagebird  MessagebirdProviderConfiguration  `json:"messagebird"`
 	Textlocal    TextlocalProviderConfiguration    `json:"textlocal"`
 	Vonage       VonageProviderConfiguration       `json:"vonage"`
-	HuaweiCloud  HuaweiCloudProviderConfiguration  `json:"huawei_cloud"`
+	HuaweiCloud  HuaweiCloudProviderConfiguration  `json:"huawei_cloud" split_words:"true"`
 }
 
 func (c *SmsProviderConfiguration) GetTestOTP(phone string, now time.Time) (string, bool) {
